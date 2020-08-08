@@ -8,9 +8,9 @@ const bundles =
             src: [
                 'css/**/*.less',
                 'css/**/*.scss',
-                "!dist/**/*"
+                "!build/**/*"
             ],
-            dest: "./dist/css",
+            dest: "./build/css",
             fileName: "site.css",
             order: [
                 "**/common.less",
@@ -22,9 +22,9 @@ const bundles =
         {// Basic
             src: [
                 './js/**/*.js',
-                "!dist/**/*"
+                "!build/**/*"
             ],
-            dest: "./dist/js",
+            dest: "./build/js",
             fileName: "site.js",
             order: [
                 "**/common.js",
@@ -40,7 +40,6 @@ const gulp = require('gulp'),
     less = require('gulp-less'),
     babel = require('gulp-babel'),
     concat = require('gulp-concat'),
-    uglify = require('gulp-uglify'),
     postcss = require("gulp-postcss"),
     cssnano = require("cssnano"),
     del = require('del'),
@@ -52,7 +51,8 @@ const gulp = require('gulp'),
     sourcemaps = require("gulp-sourcemaps"),
     browserSync = require("browser-sync").create(),
     sass = require('gulp-sass'),
-    minify = require('gulp-minify');
+    minify = require('gulp-minify'),
+    fileinclude = require('gulp-file-include');
  
 sass.compiler = require('node-sass');
 
@@ -73,8 +73,9 @@ const preprocessor = "less";
 function clean() {
 
     return del([
-        'dist/css/*.css',
-        'dist/js/*.js'
+        'build/css/*.css',
+        'build/js/*.js',
+        'build/*.html'
     ]);
 }
 
@@ -119,7 +120,7 @@ function makeScripts(bundle) {
 }
 
 function makeCssBundles(done) {
-    console.log("it do");
+   
     for (var i = 0; i < bundles.css.length; i++) {
         makeStyles(bundles.css[i]);
     }
@@ -132,14 +133,30 @@ function makeJsBundles(done) {
     done();
 }
 
+function makeHtml(){
+    console.log("it do");
+    return gulp.src([
+        "*.html",
+        "!includes/**/*.html"
+    ])
+    .pipe(fileinclude({
+        prefix: '@@',
+        basepath: '@file'
+    }))
+    .pipe(gulp.dest('build/'))
+}
+
 // Add browsersync initialization at the start of the watch task
 function watch() {
     browserSync.init({
-        proxy: "https://localhost:5001/"
+        server: {
+            baseDir: "build",
+            index: "index.html"
+        }
     });
-    gulp.watch('./Features/**/*.js', makeJsBundles).on('change', browserSync.reload);;
-    gulp.watch('./Features/**/*.less', makeCssBundles);
-    gulp.watch(["./Features/**/*.cshtml"]).on('change', browserSync.reload);
+    gulp.watch('js/**/*.js', makeJsBundles).on('change', browserSync.reload);
+    gulp.watch('css/**/*.less', makeCssBundles);
+    gulp.watch("./*.html").on('change', gulp.series(makeHtml, browserSync.reload));
     gulp.watch("gulpfile.js").on("change", () => process.exit(0));
 }
 
@@ -148,8 +165,8 @@ function watch() {
 /*
  * Specify if tasks run in series or parallel using `gulp.series` and `gulp.parallel`
  */
-const build = gulp.series(clean, gulp.parallel(makeCssBundles, makeJsBundles));
-const dev = gulp.series(clean, gulp.parallel(makeCssBundles, makeJsBundles), watch);
+const build = gulp.series(clean, gulp.parallel(makeCssBundles, makeJsBundles, makeHtml));
+const dev = gulp.series(clean, gulp.parallel(makeCssBundles, makeJsBundles, makeHtml), watch);
 
 
 /*
