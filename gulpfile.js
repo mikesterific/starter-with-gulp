@@ -7,7 +7,8 @@ const bundles =
         {// Basic
             src: [
                 'css/**/*.less',
-                'css/**/*.scss'
+                'css/**/*.scss',
+                "!dist/**/*"
             ],
             dest: "./dist/css",
             fileName: "site.css",
@@ -20,7 +21,8 @@ const bundles =
     js: [
         {// Basic
             src: [
-                'js/**/*.js'
+                './js/**/*.js',
+                "!dist/**/*"
             ],
             dest: "./dist/js",
             fileName: "site.js",
@@ -49,7 +51,8 @@ const gulp = require('gulp'),
     argv = require('yargs').argv,
     sourcemaps = require("gulp-sourcemaps"),
     browserSync = require("browser-sync").create(),
-    sass = require('gulp-sass');
+    sass = require('gulp-sass'),
+    minify = require('gulp-minify');
  
 sass.compiler = require('node-sass');
 
@@ -62,10 +65,6 @@ sass.compiler = require('node-sass');
  * */
 
 const isProd = argv.prod || false;
-const isGlobalBundle = (src = "") => {
-    return src.indexOf("global-bundle") > -1;
-};
-
 const isDebug = argv.debug;
 const enableSourceMaps = argv.sm;
 const preprocessor = "less";
@@ -74,8 +73,8 @@ const preprocessor = "less";
 function clean() {
 
     return del([
-        'build/css/*.css',
-        'build/js/*.js'
+        'dist/css/*.css',
+        'dist/js/*.js'
     ]);
 }
 
@@ -113,7 +112,7 @@ function makeScripts(bundle) {
               }]
             ]
           } ))
-        .pipe(gulpif(isGlobalBundle(bundle.fileName), uglify()))
+        .pipe(gulpif(isProd, minify({noSource: true, mangle: {toplevel: true}})))
         .pipe(concat(bundle.fileName))
         .pipe(gulpif(enableSourceMaps, sourcemaps.write("../maps")))
         .pipe(gulp.dest(bundle.dest));
